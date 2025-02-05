@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		00CFE3562D53592500F3DACD /* RealityKitContent in Frameworks */ = {isa = PBXBuildFile; productRef = 00CFE3552D53592500F3DACD /* RealityKitContent */; };
+		00CFE39A2D535AF300F3DACD /* ShaderGraphCoder in Frameworks */ = {isa = PBXBuildFile; productRef = 00CFE3992D535AF300F3DACD /* ShaderGraphCoder */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +42,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				00CFE39A2D535AF300F3DACD /* ShaderGraphCoder in Frameworks */,
 				00CFE3562D53592500F3DACD /* RealityKitContent in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -94,6 +96,7 @@
 			name = vision07;
 			packageProductDependencies = (
 				00CFE3552D53592500F3DACD /* RealityKitContent */,
+				00CFE3992D535AF300F3DACD /* ShaderGraphCoder */,
 			);
 			productName = vision07;
 			productReference = 00CFE3502D53592500F3DACD /* vision07.app */;
@@ -123,6 +126,9 @@
 			);
 			mainGroup = 00CFE3472D53592500F3DACD;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				00CFE3982D535AF300F3DACD /* XCRemoteSwiftPackageReference "ShaderGraphCoder" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 00CFE3512D53592500F3DACD /* Products */;
 			projectDirPath = "";
@@ -348,10 +354,26 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		00CFE3982D535AF300F3DACD /* XCRemoteSwiftPackageReference "ShaderGraphCoder" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/praeclarum/ShaderGraphCoder";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		00CFE3552D53592500F3DACD /* RealityKitContent */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = RealityKitContent;
+		};
+		00CFE3992D535AF300F3DACD /* ShaderGraphCoder */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 00CFE3982D535AF300F3DACD /* XCRemoteSwiftPackageReference "ShaderGraphCoder" */;
+			productName = ShaderGraphCoder;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
