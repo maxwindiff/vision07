@@ -1,33 +1,30 @@
-//
-//  vision07App.swift
-//  vision07
-//
-//  Created by Max Ng on 2/5/25.
-//
-
 import SwiftUI
 
 @main
 struct vision07App: App {
+  @Environment(\.openImmersiveSpace) private var openImmersiveSpace
+  @State private var appModel = AppModel()
 
-    @State private var appModel = AppModel()
-
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-                .environment(appModel)
+  var body: some Scene {
+    WindowGroup {
+      ContentView()
+        .environment(appModel)
+        .task {
+          await openImmersiveSpace(id: appModel.immersiveSpaceID)
         }
-
-        ImmersiveSpace(id: appModel.immersiveSpaceID) {
-            ImmersiveView()
-                .environment(appModel)
-                .onAppear {
-                    appModel.immersiveSpaceState = .open
-                }
-                .onDisappear {
-                    appModel.immersiveSpaceState = .closed
-                }
-        }
-        .immersionStyle(selection: .constant(.full), in: .full)
     }
+    .defaultSize(width: 400, height: 300)
+
+    ImmersiveSpace(id: appModel.immersiveSpaceID) {
+      ImmersiveView()
+        .environment(appModel)
+        .onAppear {
+          appModel.immersiveSpaceState = .open
+        }
+        .onDisappear {
+          appModel.immersiveSpaceState = .closed
+        }
+    }
+    .immersionStyle(selection: .constant(.full), in: .full)
+  }
 }
