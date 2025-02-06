@@ -5,13 +5,14 @@ struct Ring {
   let width: Float
   let offset: SIMD3<Float>
   let segments: Int
+  var vertexCount: Int { segments * 2 }
 }
 
 @MainActor
 func makeRingMesh(rings: [Ring]) throws -> LowLevelMesh {
   var N: Int = 0
   for ring in rings {
-    N += ring.segments * 2 // 2 vertices per segment
+    N += ring.vertexCount * 2 // two-sided
   }
   let f2stride = MemoryLayout<SIMD2<Float>>.stride
   let f3stride = MemoryLayout<SIMD3<Float>>.stride
@@ -34,7 +35,7 @@ func makeRingMesh(rings: [Ring]) throws -> LowLevelMesh {
     .init(semantic: .uv2, format: .float2, layoutIndex: 5, offset: 0),
   ]
   desc.vertexCapacity = N
-  desc.indexCapacity = (N + rings.count * 3) * 2 // N total vertices + 3 per triange fan, two-sided
+  desc.indexCapacity = N + rings.count * 2 * 3 // N total vertices + 3 per triangle fan surface
   desc.indexType = .uint16
   let mesh = try LowLevelMesh(descriptor: desc)
 
@@ -50,8 +51,6 @@ func makeRingMesh(rings: [Ring]) throws -> LowLevelMesh {
         let z = ring.radius * sin(angle)
         vertexData[posIndex] = SIMD3<Float>(x, -ring.width / 2, z) + ring.offset
         vertexData[posIndex+1] = SIMD3<Float>(x, ring.width / 2, z) + ring.offset
-        bounds.formUnion(vertexData[posIndex])
-        bounds.formUnion(vertexData[posIndex]+1)
         vertexData[normalIndex] = normalize(SIMD3<Float>(x, 0, z))
         vertexData[normalIndex+1] = vertexData[normalIndex]
         vertexData[bitangentIndex] = normalize(SIMD3<Float>(-z, 0, x))
@@ -59,6 +58,19 @@ func makeRingMesh(rings: [Ring]) throws -> LowLevelMesh {
         posIndex += 2
         normalIndex += 2
         bitangentIndex += 2
+
+        bounds.formUnion(vertexData[posIndex])
+        bounds.formUnion(vertexData[posIndex]+1)
+      }
+
+      // Copy back side
+      for _ in 0..<ring.vertexCount {
+        vertexData[posIndex] = vertexData[posIndex-ring.vertexCount]
+        vertexData[normalIndex] = -vertexData[normalIndex-ring.vertexCount]
+        vertexData[bitangentIndex] = vertexData[bitangentIndex-ring.vertexCount]
+        posIndex += 1
+        normalIndex += 1
+        bitangentIndex += 1
       }
     }
   }
@@ -79,21 +91,42 @@ func makeRingMesh(rings: [Ring]) throws -> LowLevelMesh {
         uv1Index += 2
         uv2Index += 2
       }
+
+      // Copy back side
+      for _ in 0..<ring.vertexCount {
+        uvData[uv0Index] = uvData[uv0Index-ring.vertexCount]
+        uvData[uv1Index] = uvData[uv1Index-ring.vertexCount]
+        uvData[uv2Index] = uvData[uv2Index-ring.vertexCount]
+        uv0Index += 1
+        uv1Index += 1
+        uv2Index += 1
+      }
     }
   }
   mesh.withUnsafeMutableIndices { rawIndices in
     let indexBuffer = rawIndices.bindMemory(to: UInt16.self)
     var indexIdx = 0, vertexStart: UInt16 = 0
     for ring in rings {
-      for i in 0..<ring.segments * 2 {
+      for i in 0..<ring.vertexCount {
         indexBuffer[indexIdx + i] = vertexStart + UInt16(i)
       }
-      indexIdx += ring.segments * 2
+      indexIdx += ring.vertexCount
       indexBuffer[indexIdx] = vertexStart
       indexBuffer[indexIdx+1] = vertexStart + 1
       indexBuffer[indexIdx+2] = UInt16.max
       indexIdx += 3
-      vertexStart += UInt16(ring.segments * 2)
+      vertexStart += UInt16(ring.vertexCount)
+
+      // The backside has different vertex indices, so we can't just copy it! Also change the order.
+      for i in 0..<ring.vertexCount {
+        indexBuffer[indexIdx + i] = vertexStart + UInt16(i ^ 1)
+      }
+      indexIdx += ring.vertexCount
+      indexBuffer[indexIdx] = vertexStart + 1
+      indexBuffer[indexIdx+1] = vertexStart
+      indexBuffer[indexIdx+2] = UInt16.max
+      indexIdx += 3
+      vertexStart += UInt16(ring.vertexCount)
     }
   }
 
