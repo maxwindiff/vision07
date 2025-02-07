@@ -4,16 +4,27 @@ import RealityKit
 import RealityKitContent
 
 struct ImmersiveView: View {
-  let surface = SGValue.color3f([0, 0, 1]).pbrSurface()
+  func makeMaterial(hue: SIMD3<Float>) async throws -> ShaderGraphMaterial {
+    let uv = SGValue.texcoordVector2(index: 0)
+    let x = abs(uv.x - 0.5), y = abs(uv.y - 0.5)
+    let brightness = (0.5 - x) / x
+    let color = SGValue.color3f(hue) * brightness * SGScalar(source: .constant(.float(0.03)))
+    let surface = unlitSurface(color: color,
+                               opacity: SGScalar(source: .constant(.float(0))),
+                               applyPostProcessToneMap: false,
+                               hasPremultipliedAlpha: true)
+    return try await ShaderGraphMaterial(surface: surface)
+  }
+
   var body: some View {
     RealityView { content in
-      let mat = try! await ShaderGraphMaterial(surface: surface, geometryModifier: nil)
+      let mat = try! await makeMaterial(hue: [0.8, 1, 1.5])
 
       let entity0 = ModelEntity(mesh: .generateBox(size: 0.16), materials: [mat])
-      entity0.transform.translation = [-0.1, 1.5, -1.0]
+      entity0.transform.translation = [-0.1, 1.5, -1.5]
 
       let entity1 = ModelEntity(mesh: .generateSphere(radius: 0.1), materials: [mat])
-      entity1.transform.translation = [0.1, 1.5, -1.0]
+      entity1.transform.translation = [0.1, 1.5, -1.5]
 
       let mesh = try! makeRingMesh(rings: [
         Ring(radius: 0.2, width: 0.1, offset: .zero, segments: 32),
