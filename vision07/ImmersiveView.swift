@@ -16,6 +16,16 @@ struct ImmersiveView: View {
     return try await ShaderGraphMaterial(surface: surface)
   }
 
+  func makeEntity(mesh: LowLevelMesh, mat: RealityKit.Material, sortGroup: ModelSortGroup?, sortOrder: Int32?) async throws -> ModelEntity {
+    let resource = try await MeshResource(from: mesh)
+    let entity = ModelEntity(mesh: resource, materials: [mat])
+    if let sortGroup, let sortOrder {
+      let sortComponent = ModelSortGroupComponent(group: sortGroup, order: sortOrder)
+      entity.components.set(sortComponent)
+    }
+    return entity
+  }
+
   var body: some View {
     RealityView { content in
       let mat = try! await makeMaterial(hue: [0.8, 1, 1.5])
@@ -26,17 +36,28 @@ struct ImmersiveView: View {
       let entity1 = ModelEntity(mesh: .generateSphere(radius: 0.1), materials: [mat])
       entity1.transform.translation = [0.1, 1.5, -1.5]
 
-      let mesh = try! makeRingMesh(rings: [
-        Ring(radius: 0.2, width: 0.1, offset: .zero, segments: 32),
-        Ring(radius: 0.3, width: 0.05, offset: SIMD3<Float>(-0.1, 0.05, -0.1), segments: 32),
-      ])
-      let resource = try! await MeshResource(from: mesh)
-      let entity2 = ModelEntity(mesh: resource, materials: [mat])
-      entity2.transform.translation = [0, 1, -1.5]
+      let ring1 = Ring(radius: 0.2, width: 0.1), ring2 = Ring(radius: 0.3, width: 0.05)
+      let out1mesh = try! makeRingMesh(ring: ring1, side: .outside)
+      let in1mesh = try! makeRingMesh(ring: ring1, side: .inside)
+      let out2mesh = try! makeRingMesh(ring: ring2, side: .outside)
+      let in2mesh = try! makeRingMesh(ring: ring2, side: .inside)
+
+      let group = ModelSortGroup(depthPass: nil)
+      let in2 = try! await makeEntity(mesh: in2mesh, mat: mat, sortGroup: group, sortOrder: 1)
+      let in1 = try! await makeEntity(mesh: in1mesh, mat: mat, sortGroup: group, sortOrder: 2)
+      let out1 = try! await makeEntity(mesh: out1mesh, mat: mat, sortGroup: group, sortOrder: 3)
+      let out2 = try! await makeEntity(mesh: out2mesh, mat: mat, sortGroup: group, sortOrder: 4)
+      in1.transform.translation = [0, 1.01, -1.5]
+      in2.transform.translation = [0, 1, -1.5]
+      out1.transform.translation = [0, 1.01, -1.5]
+      out2.transform.translation = [0, 1, -1.5]
 
       content.add(entity0)
       content.add(entity1)
-      content.add(entity2)
+      content.add(in1)
+      content.add(in2)
+      content.add(out1)
+      content.add(out2)
     }
   }
 }
