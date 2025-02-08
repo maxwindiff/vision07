@@ -5,7 +5,7 @@ struct Ring {
   let width: Float
   var offset: SIMD3<Float> = .zero
   var segments: Int = 64
-  var vertexCount: Int { segments * 2 }
+  var vertexCount: Int { segments * 2 + 2 } // +2 because of wrap around
 }
 
 enum Side {
@@ -43,7 +43,7 @@ func makeRingMesh(ring: Ring, side: Side) throws -> LowLevelMesh {
     .init(semantic: .uv2, format: .float2, layoutIndex: 5, offset: 0),
   ]
   desc.vertexCapacity = ring.vertexCount
-  desc.indexCapacity = ring.vertexCount + 2
+  desc.indexCapacity = ring.vertexCount
   desc.indexType = .uint16
   let mesh = try LowLevelMesh(descriptor: desc)
 
@@ -53,7 +53,7 @@ func makeRingMesh(ring: Ring, side: Side) throws -> LowLevelMesh {
     var posIndex = 0, normalIndex = ring.vertexCount, bitangentIndex = ring.vertexCount * 2
 
     let angleStep = 2 * Float.pi / Float(ring.segments)
-    for i in 0..<ring.segments {
+    for i in 0..<ring.segments+1 {
       let angle = Float(i) * angleStep
       let x = ring.radius * cos(angle)
       let z = ring.radius * sin(angle)
@@ -76,7 +76,7 @@ func makeRingMesh(ring: Ring, side: Side) throws -> LowLevelMesh {
     var uv0Index = 0, uv1Index = ring.vertexCount, uv2Index = ring.vertexCount * 2
 
     let vStep = Float(1) / Float(ring.segments)
-    for i in 0..<ring.segments {
+    for i in 0..<ring.segments+1 {
       let v = Float(i) * vStep
       uvData[uv0Index] = SIMD2<Float>(0, v)
       uvData[uv0Index+1] = SIMD2<Float>(1, v)
@@ -96,14 +96,10 @@ func makeRingMesh(ring: Ring, side: Side) throws -> LowLevelMesh {
       for i in 0..<ring.vertexCount {
         indexBuffer[i] = UInt16(i)
       }
-      indexBuffer[ring.vertexCount] = 0
-      indexBuffer[ring.vertexCount+1] = 1
     } else {
       for i in 0..<ring.vertexCount {
         indexBuffer[i] = UInt16(i ^ 1)
       }
-      indexBuffer[ring.vertexCount] = UInt16(1)
-      indexBuffer[ring.vertexCount+1] = UInt16(0)
     }
   }
 

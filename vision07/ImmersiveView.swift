@@ -6,9 +6,11 @@ import RealityKitContent
 struct ImmersiveView: View {
   func makeMaterial(hue: SIMD3<Float>) async throws -> ShaderGraphMaterial {
     let uv = SGValue.texcoordVector2(index: 0)
-    let x = abs(uv.x - 0.5), y = abs(uv.y - 0.5)
+    let x = abs(uv.x - 0.5), y = uv.y
     let brightness = (0.5 - x) / x
-    let color = SGValue.color3f(hue) * brightness * SGScalar(source: .constant(.float(0.03)))
+    let offset = SGValue.floatParameter(name: "Offset", defaultValue: 0)
+    let mask = sin((y - offset) * .pi * 2 - SGScalar.time * 5)
+    let color = SGValue.color3f(hue) * brightness * mask * SGScalar(source: .constant(.float(0.03)))
     let surface = unlitSurface(color: color,
                                opacity: SGScalar(source: .constant(.float(0))),
                                applyPostProcessToneMap: false,
@@ -28,36 +30,41 @@ struct ImmersiveView: View {
 
   var body: some View {
     RealityView { content in
-      let mat = try! await makeMaterial(hue: [0.8, 1, 1.5])
+      var mat = try! await makeMaterial(hue: [0.8, 1, 1.5])
 
+      // Sanity check
       let entity0 = ModelEntity(mesh: .generateBox(size: 0.16), materials: [mat])
       entity0.transform.translation = [-0.1, 1.5, -1.5]
-
       let entity1 = ModelEntity(mesh: .generateSphere(radius: 0.1), materials: [mat])
       entity1.transform.translation = [0.1, 1.5, -1.5]
-
-      let ring1 = Ring(radius: 0.2, width: 0.1), ring2 = Ring(radius: 0.3, width: 0.05)
-      let out1mesh = try! makeRingMesh(ring: ring1, side: .outside)
-      let in1mesh = try! makeRingMesh(ring: ring1, side: .inside)
-      let out2mesh = try! makeRingMesh(ring: ring2, side: .outside)
-      let in2mesh = try! makeRingMesh(ring: ring2, side: .inside)
-
-      let group = ModelSortGroup(depthPass: nil)
-      let in2 = try! await makeEntity(mesh: in2mesh, mat: mat, sortGroup: group, sortOrder: 1)
-      let in1 = try! await makeEntity(mesh: in1mesh, mat: mat, sortGroup: group, sortOrder: 2)
-      let out1 = try! await makeEntity(mesh: out1mesh, mat: mat, sortGroup: group, sortOrder: 3)
-      let out2 = try! await makeEntity(mesh: out2mesh, mat: mat, sortGroup: group, sortOrder: 4)
-      in1.transform.translation = [0, 1.01, -1.5]
-      in2.transform.translation = [0, 1, -1.5]
-      out1.transform.translation = [0, 1.01, -1.5]
-      out2.transform.translation = [0, 1, -1.5]
-
       content.add(entity0)
       content.add(entity1)
-      content.add(in1)
-      content.add(in2)
-      content.add(out1)
-      content.add(out2)
+
+      let radiusAvg: Float = 0.2, radiusRange: Float = 0.02;
+      let widthAvg: Float = 0.02, widthRange: Float = 0.000;
+      let yRange: Float = 0.01;
+      var rings: [Ring] = []
+      for i in 0..<30 {
+        let radius = radiusAvg + Float.random(in: -radiusRange...radiusRange)
+        let width = widthAvg + Float.random(in: -widthRange...widthRange)
+        let y = Float.random(in: -yRange...yRange)
+        rings.append(Ring(radius: radius, width: width, offset: [0, y, 0]))
+      }
+      rings.sort { $0.radius > $1.radius }
+
+      let group = ModelSortGroup(depthPass: nil)
+      for (i, ring) in rings.enumerated() {
+        let animationOffset = Float.random(in: 0...1)
+        try! mat.setParameter(name: "Offset", value: .float(animationOffset))
+        let inEntity = try! await makeEntity(mesh: try! makeRingMesh(ring: ring, side: .inside),
+                                             mat: mat, sortGroup: group, sortOrder: Int32(i))
+        let outEntity = try! await makeEntity(mesh: try! makeRingMesh(ring: ring, side: .outside),
+                                              mat: mat, sortGroup: group, sortOrder: Int32(rings.count*2 - i))
+        inEntity.transform.translation = [0, 1.2, -0.7] + ring.offset
+        outEntity.transform.translation = [0, 1.2, -0.7] + ring.offset
+        content.add(inEntity)
+        content.add(outEntity)
+      }
     }
   }
 }
