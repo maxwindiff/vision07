@@ -5,14 +5,15 @@ import RealityKitContent
 
 func makeMaterial(hue: SIMD3<Float>) async throws -> ShaderGraphMaterial {
   let timeOffset = SGValue.floatParameter(name: "TimeOffset", defaultValue: 0)
-  let speed = SGValue.floatParameter(name: "Speed", defaultValue: 0.4)
+  let speed = SGValue.floatParameter(name: "Speed", defaultValue: 0.3)
+  let brightness = SGValue.floatParameter(name: "Brightness", defaultValue: 1)
   let uv = SGValue.texcoordVector2(index: 0)
 
   let x = abs(uv.x - 0.5)
   let y = (fract(uv.y - SGValue.time * speed - timeOffset) - 0.5) * 3
   let lightX = (0.5 - x) / x
   let lightY = exp(y * y * SGValue.float(-30.0))
-  let light = lightX * lightY * SGValue.float(0.03)
+  let light = lightX * lightY * SGValue.float(0.01) * brightness
   let color = SGValue.color3f(hue) * light
   let surface = unlitSurface(color: color,
                              opacity: SGScalar(source: .constant(.float(0))),
