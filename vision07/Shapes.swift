@@ -3,7 +3,6 @@ import RealityKit
 struct Ring {
   let radius: Float
   let width: Float
-  var offset: SIMD3<Float> = .zero
   var segments: Int = 120
   var vertexCount: Int { segments * 2 + 2 } // +2 because of wrap around
 }
@@ -57,8 +56,8 @@ func makeRingMesh(ring: Ring, side: Side) throws -> LowLevelMesh {
       let angle = Float(i) * angleStep
       let x = ring.radius * cos(angle)
       let z = ring.radius * sin(angle)
-      vertexData[posIndex] = SIMD3<Float>(x, -ring.width / 2, z) + ring.offset
-      vertexData[posIndex+1] = SIMD3<Float>(x, ring.width / 2, z) + ring.offset
+      vertexData[posIndex] = SIMD3<Float>(x, -ring.width / 2, z)
+      vertexData[posIndex+1] = SIMD3<Float>(x, ring.width / 2, z)
       vertexData[normalIndex] = normalize(SIMD3<Float>(x, 0, z)) * side.normalFactor()
       vertexData[normalIndex+1] = vertexData[normalIndex]
       vertexData[bitangentIndex] = normalize(SIMD3<Float>(-z, 0, x))
