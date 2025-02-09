@@ -1,0 +1,130 @@
+#usda 1.0
+(
+    customLayerData = {
+        string creator = "Reality Composer Pro Version 2.0 (448.60.4)"
+    }
+    defaultPrim = "Root"
+    metersPerUnit = 1
+    upAxis = "Y"
+)
+
+def Xform "Root"
+{
+    def Material "Material"
+    {
+        token outputs:mtlx:surface.connect = </Root/Material/UnlitSurface.outputs:out>
+        token outputs:realitykit:vertex
+        float2 ui:nodegraph:realitykit:subgraphOutputs:pos = (1123.4688, -50.191406)
+        int ui:nodegraph:realitykit:subgraphOutputs:stackingOrder = 105
+
+        def Shader "UnlitSurface"
+        {
+            uniform token info:id = "ND_realitykit_unlit_surfaceshader"
+            bool inputs:applyPostProcessToneMap = 0
+            color3f inputs:color.connect = </Root/Material/Convert.outputs:out>
+            bool inputs:hasPremultipliedAlpha = 0
+            float inputs:opacity = 1
+            float inputs:opacityThreshold
+            token outputs:out
+            float2 ui:nodegraph:node:pos = (838.9531, -24.433594)
+            int ui:nodegraph:node:stackingOrder = 115
+        }
+
+        def Shader "TextureCoordinates"
+        {
+            uniform token info:id = "ND_texcoord_vector2"
+            float2 outputs:out
+            float2 ui:nodegraph:node:pos = (-503.65234, -1.1210938)
+            int ui:nodegraph:node:stackingOrder = 93
+        }
+
+        def Shader "Separate2"
+        {
+            uniform token info:id = "ND_separate2_vector2"
+            float2 inputs:in.connect = </Root/Material/TextureCoordinates.outputs:out>
+            float outputs:outx
+            float outputs:outy
+            float2 ui:nodegraph:node:pos = (-308.16797, 0.140625)
+            int ui:nodegraph:node:stackingOrder = 90
+        }
+
+        def Shader "Subtract"
+        {
+            uniform token info:id = "ND_subtract_float"
+            float inputs:in1.connect = </Root/Material/Separate2.outputs:outx>
+            float inputs:in2 = 0.5
+            float inputs:in2.connect = None
+            float outputs:out
+            float2 ui:nodegraph:node:pos = (-153.0625, -57.277344)
+            int ui:nodegraph:node:stackingOrder = 28
+        }
+
+        def Shader "Abs"
+        {
+            uniform token info:id = "ND_absval_float"
+            float inputs:in.connect = </Root/Material/Subtract.outputs:out>
+            float outputs:out
+            float2 ui:nodegraph:node:pos = (-40.308594, -56.085938)
+            int ui:nodegraph:node:stackingOrder = 38
+        }
+
+        def Shader "Subtract_1"
+        {
+            uniform token info:id = "ND_subtract_float"
+            float inputs:in1 = 0.5
+            float inputs:in2.connect = </Root/Material/Abs.outputs:out>
+            float outputs:out
+            float2 ui:nodegraph:node:pos = (122.84375, -82.76953)
+            int ui:nodegraph:node:stackingOrder = 39
+        }
+
+        def Shader "Divide"
+        {
+            uniform token info:id = "ND_divide_float"
+            float inputs:in1.connect = </Root/Material/Subtract_1.outputs:out>
+            float inputs:in2.connect = </Root/Material/Abs.outputs:out>
+            float outputs:out
+            float2 ui:nodegraph:node:pos = (228.32812, -47.046875)
+            int ui:nodegraph:node:stackingOrder = 42
+        }
+
+        def Shader "ConstantFloat3"
+        {
+            uniform token info:id = "ND_constant_vector3"
+            float3 inputs:value = (0.8, 1, 1.5)
+            float3 outputs:out
+            float2 ui:nodegraph:node:pos = (93.51953, -194.01953)
+            int ui:nodegraph:node:stackingOrder = 94
+        }
+
+        def Shader "Multiply"
+        {
+            uniform token info:id = "ND_multiply_vector3FA"
+            float3 inputs:in1.connect = </Root/Material/ConstantFloat3.outputs:out>
+            prepend float inputs:in2.connect = </Root/Material/Divide.outputs:out>
+            float3 outputs:out
+            float2 ui:nodegraph:node:pos = (335.8203, -87.390625)
+            int ui:nodegraph:node:stackingOrder = 101
+        }
+
+        def Shader "Convert"
+        {
+            uniform token info:id = "ND_convert_vector3_color3"
+            float3 inputs:in.connect = </Root/Material/Multiply_1.outputs:out>
+            color3f outputs:out
+            float2 ui:nodegraph:node:pos = (595.1328, -82.73828)
+            int ui:nodegraph:node:stackingOrder = 103
+        }
+
+        def Shader "Multiply_1"
+        {
+            uniform token info:id = "ND_multiply_vector3FA"
+            prepend float3 inputs:in1.connect = </Root/Material/Multiply.outputs:out>
+            float inputs:in2 = 0.01
+            float3 outputs:out
+            float2 ui:nodegraph:node:pos = (449.54538, -79.80694)
+            int ui:nodegraph:node:stackingOrder = 118
+        }
+    }
+}
+

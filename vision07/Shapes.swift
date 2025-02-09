@@ -4,7 +4,7 @@ struct Ring {
   let radius: Float
   let width: Float
   var offset: SIMD3<Float> = .zero
-  var segments: Int = 64
+  var segments: Int = 120
   var vertexCount: Int { segments * 2 + 2 } // +2 because of wrap around
 }
 
