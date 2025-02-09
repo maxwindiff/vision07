@@ -13,17 +13,6 @@ func makeEntity(mesh: MeshResource, mat: RealityKit.Material,
   return entity
 }
 
-func sampleCircle() -> (Float, Float) {
-  while true {
-    let x = Float.random(in: 0...1)
-    let y = Float.random(in: 0...1)
-    if (x * x + y * y) <= 1 {
-      return (x, y)
-    }
-  }
-  return (0, 0)
-}
-
 struct Ring {
   var scale: Float = 1
   var offset: Float = 0
@@ -58,15 +47,16 @@ class RingSystem: System {
       // Only need to compute targetFactor once
       if targetFactor < 0 {
         var maxDist: Float = 0
-        for finger1 in comp.fingerTips {
-          for finger2 in comp.fingerTips {
-            maxDist = max(maxDist, distance(finger1.position(relativeTo: nil),
-                                            finger2.position(relativeTo: nil)))
+        for i in 0..<comp.fingerTips.count {
+          for j in 0..<i {
+            maxDist = max(maxDist, distance(comp.fingerTips[i].position(relativeTo: nil),
+                                            comp.fingerTips[j].position(relativeTo: nil)))
           }
         }
-        targetFactor = normalize(value: maxDist, fromRange: (0.05, 0.15))
+        targetFactor = 1 - normalize(value: maxDist, range: 0.05...0.15)
       }
 
+      // Slow ramp up, fast ramp down
       if targetFactor > comp.factor {
         comp.factor += (targetFactor - comp.factor) * 0.003
       } else {
@@ -77,17 +67,12 @@ class RingSystem: System {
 
       if var modelComponent = entity.components[ModelComponent.self],
          var mat = modelComponent.materials.first as? ShaderGraphMaterial {
-        try! mat.setParameter(name: "TimeOffset", value: .float(comp.ringParam.time))
-        try! mat.setParameter(name: "Brightness", value: .float(brightness))
+        try? mat.setParameter(name: "TimeOffset", value: .float(comp.ringParam.time))
+        try? mat.setParameter(name: "Brightness", value: .float(brightness))
         modelComponent.materials = [mat]
         entity.components.set(modelComponent)
       }
     }
-  }
-
-  func normalize(value: Float, fromRange: (Float, Float)) -> Float {
-    let normalized = (value - fromRange.0) / (fromRange.1 - fromRange.0)
-    return 1 - min(max(normalized, 0), 1)
   }
 }
 
@@ -121,12 +106,12 @@ struct ImmersiveView: View {
       for fingerTip in fingerTips {
         content.add(fingerTip)
       }
-      preview.transform.translation = [0, 1.5, -0.5]
+      preview.transform.translation = [-0.05, 1.5, -0.5]
       content.add(preview)
 
       // Rings
-      let inMesh = try! makeRingMesh(radius: 1, width: 0.01, side: .inside)
-      let outMesh = try! makeRingMesh(radius: 1, width: 0.01, side: .outside)
+      let inMesh = try! await MeshResource(from: try! makeRingMesh(radius: 1, width: 0.01, side: .inside))
+      let outMesh = try! await MeshResource(from: try! makeRingMesh(radius: 1, width: 0.01, side: .outside))
 
       var rings: [Ring] = []
       for _ in 0..<100 {
@@ -144,10 +129,8 @@ struct ImmersiveView: View {
         try? mat.setParameter(name: "TimeOffset", value: .float(ring.time))
         try? mat.setParameter(name: "Speed", value: .float(0.01))
         try? mat.setParameter(name: "Brightness", value: .float(ring.brightness))
-        let inEntity = await makeEntity(mesh: try! await MeshResource(from: inMesh),
-                                        mat: mat, sortGroup: group, sortOrder: Int32(i))
-        let outEntity = await makeEntity(mesh: try! await MeshResource(from: outMesh),
-                                         mat: mat, sortGroup: group, sortOrder: Int32(rings.count*2 - i))
+        let inEntity = await makeEntity(mesh: inMesh, mat: mat, sortGroup: group, sortOrder: Int32(i))
+        let outEntity = await makeEntity(mesh: outMesh, mat: mat, sortGroup: group, sortOrder: Int32(rings.count*2 - i))
         inEntity.transform.scale = [ring.scale, 1, ring.scale]
         inEntity.transform.translation.y = ring.offset
         outEntity.transform = inEntity.transform
@@ -159,14 +142,15 @@ struct ImmersiveView: View {
         ringsEntity.addChild(inEntity)
         ringsEntity.addChild(outEntity)
       }
-      ringsEntity.transform.rotation = simd_quatf(angle: .pi/2, axis: [0, 0, 1])
-      ringsEntity.transform.translation.x = 0.1
 
-      let occlusion = await makeEntity(mesh: MeshResource.generateCylinder(height: 0.2, radius: 0.025),
+      let occlusion = await makeEntity(mesh: MeshResource.generateCylinder(height: 0.2, radius: 0.03),
                                        mat: OcclusionMaterial(),
                                        sortGroup: group,
                                        sortOrder: -1)
       ringsEntity.addChild(occlusion)
+
+      ringsEntity.transform.rotation = simd_quatf(angle: .pi/2, axis: [0, 0, 1])
+      ringsEntity.transform.translation.x = 0.1
     }
     .upperLimbVisibility(.hidden)
     .task {
