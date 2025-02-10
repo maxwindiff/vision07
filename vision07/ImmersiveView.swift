@@ -14,11 +14,12 @@ func makeEntity(mesh: MeshResource, mat: RealityKit.Material,
 }
 
 struct Ring {
-  var scale: Float = 1
-  var offset: Float = 0
+  var size: Float = 0.1
+  var xOffset: Float = 0
+  var yOffset: Float = 0
 
   var time: Float = 0
-  var speed: Float = 0.4
+  var speed: Float = 0
   var brightness: Float = 1
 }
 
@@ -53,24 +54,29 @@ class RingSystem: System {
                                             comp.fingerTips[j].position(relativeTo: nil)))
           }
         }
-        targetFactor = 1 - normalize(value: maxDist, range: 0.05...0.15)
+        targetFactor = 1 - normalize(value: maxDist, range: 0.05...0.08)
       }
 
       // Slow ramp up, fast ramp down
       if targetFactor > comp.factor {
-        comp.factor += (targetFactor - comp.factor) * 0.003
+        comp.factor += (targetFactor - comp.factor) * 0.002
       } else {
         comp.factor += (targetFactor - comp.factor) * 0.007
       }
-      comp.ringParam.time += comp.ringParam.speed * (1 + comp.factor * 10)
-      let brightness = comp.ringParam.brightness * (1 + comp.factor * 5)
+      comp.ringParam.time += comp.ringParam.speed * (1 + comp.factor * 5)
+      let brightness = comp.ringParam.brightness * (1 + comp.factor)
+      let scale = 1.0 - comp.factor * 0.9
+      let size = comp.ringParam.size + comp.ringParam.xOffset * scale
 
       if var modelComponent = entity.components[ModelComponent.self],
          var mat = modelComponent.materials.first as? ShaderGraphMaterial {
         try? mat.setParameter(name: "TimeOffset", value: .float(comp.ringParam.time))
         try? mat.setParameter(name: "Brightness", value: .float(brightness))
+        try? mat.setParameter(name: "Mode", value: .float(comp.factor))
         modelComponent.materials = [mat]
         entity.components.set(modelComponent)
+        entity.transform.scale = [size, 1, size]
+        entity.transform.translation.y = comp.ringParam.yOffset * scale
       }
     }
   }
@@ -92,7 +98,7 @@ struct ImmersiveView: View {
 
   var body: some View {
     RealityView { content in
-      var mat = try! await makeMaterial(hue: [0.8, 1, 1.5])
+      var mat = try! await makeMaterial()
 
       // Sanity check
       let entity0 = ModelEntity(mesh: .generateBox(size: 0.2), materials: [mat])
@@ -116,13 +122,14 @@ struct ImmersiveView: View {
       var rings: [Ring] = []
       for _ in 0..<100 {
         let (x, y) = sampleCircle()
-        rings.append(Ring(scale: 0.05 + x * 0.01,
-                               offset: y * 0.01,
-                               time: Float.random(in: 0...10),
-                               speed: Float.random(in: 0.001...0.002),
-                               brightness: Float.random(in: 0.5...0.5)))
+        rings.append(Ring(size: 0.05,
+                          xOffset: x * 0.015,
+                          yOffset: y * 0.02,
+                          time: Float.random(in: 0...10),
+                          speed: Float.random(in: 0.002...0.003),
+                          brightness: Float.random(in: 0.5...1)))
       }
-      rings.sort { $0.scale > $1.scale }
+      rings.sort { $0.xOffset > $1.xOffset }
 
       let group = ModelSortGroup(depthPass: nil)
       for (i, ring) in rings.enumerated() {
@@ -131,8 +138,8 @@ struct ImmersiveView: View {
         try? mat.setParameter(name: "Brightness", value: .float(ring.brightness))
         let inEntity = await makeEntity(mesh: inMesh, mat: mat, sortGroup: group, sortOrder: Int32(i))
         let outEntity = await makeEntity(mesh: outMesh, mat: mat, sortGroup: group, sortOrder: Int32(rings.count*2 - i))
-        inEntity.transform.scale = [ring.scale, 1, ring.scale]
-        inEntity.transform.translation.y = ring.offset
+        inEntity.transform.scale = [ring.size + ring.xOffset, 1, ring.size + ring.xOffset]
+        inEntity.transform.translation.y = ring.yOffset
         outEntity.transform = inEntity.transform
 
         let ringComponent = RingComponent(fingerTips: fingerTips, ringParam: ring)
@@ -143,7 +150,7 @@ struct ImmersiveView: View {
         ringsEntity.addChild(outEntity)
       }
 
-      let occlusion = await makeEntity(mesh: MeshResource.generateCylinder(height: 0.2, radius: 0.03),
+      let occlusion = await makeEntity(mesh: MeshResource.generateCylinder(height: 0.2, radius: 0.03 ),
                                        mat: OcclusionMaterial(),
                                        sortGroup: group,
                                        sortOrder: -1)
