@@ -59,14 +59,14 @@ class RingSystem: System {
 
       // Slow ramp up, fast ramp down
       if targetFactor > comp.factor {
-        comp.factor += (targetFactor - comp.factor) * 0.002
+        comp.factor += (targetFactor - comp.factor) * 0.004
       } else {
-        comp.factor += (targetFactor - comp.factor) * 0.007
+        comp.factor += (targetFactor - comp.factor) * 0.006
       }
       comp.ringParam.time += comp.ringParam.speed * (1 + comp.factor * 5)
       let brightness = comp.ringParam.brightness * (1 + comp.factor)
       let scale = 1.0 - comp.factor * 0.9
-      let size = comp.ringParam.size + comp.ringParam.xOffset * scale
+      let size = comp.ringParam.size * (1.0 - comp.factor * 0.15) + comp.ringParam.xOffset * scale
 
       if var modelComponent = entity.components[ModelComponent.self],
          var mat = modelComponent.materials.first as? ShaderGraphMaterial {
@@ -120,13 +120,13 @@ struct ImmersiveView: View {
       let outMesh = try! await MeshResource(from: try! makeRingMesh(radius: 1, width: 0.01, side: .outside))
 
       var rings: [Ring] = []
-      for _ in 0..<100 {
+      for _ in 0..<150 {
         let (x, y) = sampleCircle()
         rings.append(Ring(size: 0.05,
-                          xOffset: x * 0.015,
-                          yOffset: y * 0.02,
+                          xOffset: x * 0.013,
+                          yOffset: y * 0.016,
                           time: Float.random(in: 0...10),
-                          speed: Float.random(in: 0.002...0.003),
+                          speed: Float.random(in: 0.002...0.004),
                           brightness: Float.random(in: 0.5...1)))
       }
       rings.sort { $0.xOffset > $1.xOffset }

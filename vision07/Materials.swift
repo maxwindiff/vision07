@@ -10,17 +10,15 @@ func makeMaterial(hue1: SIMD3<Float> = [1.5, 0.8, 0.3],
   let mode = SGValue.floatParameter(name: "Mode", defaultValue: 0)
   let uv = SGValue.uv0
   let x = abs(uv.x - 0.5)
-  let length = mix(fg: SGValue.float(2), bg: SGValue.float(4), mix: mode)
+  let length = mix(fg: SGValue.float(2), bg: SGValue.float(3), mix: mode)
   let ty = uv.y - timeOffset
   let y = (fract(ty) - 0.5) * length
 
   // Mode 1
-  let shapeX1 = (0.2 - x) / x
+  let shapeX1 = (0.3 - x) / x
   let shapeY1 = exp(y * y * SGValue.float(-30.0))
-  let noiseUV = SGValue.vector2f(.zero, ty * 100)
-  let noise = noise2D(amplitude: SGValue.float(0.5), texcoord: noiseUV).add(.float(0.5))
-  let bright1 = shapeX1 * shapeY1 * SGValue.float(0.03) * brightness
-  let color1 = SGValue.color3f(hue1).multiply(multiply(noise, bright1))
+  let bright1 = shapeX1 * shapeY1 * SGValue.float(0.01) * brightness
+  let color1 = SGValue.color3f(hue1) * bright1
 
   // Mode 2
   let shapeX2 = (0.5 - x) / x
