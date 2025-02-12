@@ -3,8 +3,9 @@ import SwiftUI
 import RealityKit
 import RealityKitContent
 
-func makeMaterial(hue1: SIMD3<Float> = [1.5, 0.8, 0.3],
-                  hue2: SIMD3<Float> = [0.8, 1, 1.5]) async throws -> ShaderGraphMaterial {
+func makeMaterial() async throws -> ShaderGraphMaterial {
+  let hsv1 = SGValue.color3fParameter(name: "HSV1", defaultValue: [0.4, 0.9, 1])
+  let rgb2 = SGValue.vector3fParameter(name: "RGB2", defaultValue: [0.8, 1, 1.5])
   let timeOffset = SGValue.floatParameter(name: "TimeOffset", defaultValue: 0)
   let brightness = SGValue.floatParameter(name: "Brightness", defaultValue: 1)
   let mode = SGValue.floatParameter(name: "Mode", defaultValue: 0)
@@ -15,16 +16,17 @@ func makeMaterial(hue1: SIMD3<Float> = [1.5, 0.8, 0.3],
   let y = (fract(ty) - 0.5) * length
 
   // Mode 1
-  let shapeX1 = (0.3 - x) / x
+  let shapeX1 = smoothStep(x, low: SGValue.float(-0.03), high: SGValue.float(0)) *
+    smoothStep(x, low: SGValue.float(0.03), high: SGValue.float(0))
   let shapeY1 = exp(y * y * SGValue.float(-30.0))
-  let bright1 = shapeX1 * shapeY1 * SGValue.float(0.01) * brightness
-  let color1 = SGValue.color3f(hue1) * bright1
+  let bright1 = shapeX1 * shapeY1 * SGValue.float(1) * brightness
+  let color1 = hsv1.hsvToRGB() * bright1 * 0.8
 
   // Mode 2
   let shapeX2 = (0.5 - x) / x
   let shapeY2 = exp(y * y * SGValue.float(-30.0))
   let bright2 = shapeX2 * shapeY2 * SGValue.float(0.01) * brightness
-  let color2 = SGValue.color3f(hue2) * bright2
+  let color2 = SGValue.color3f(rgb2.x * bright2, rgb2.y * bright2, rgb2.z * bright2)
 
   let color = mix(fg: color2, bg: color1, mix: mode)
   let surface = unlitSurface(color: color,

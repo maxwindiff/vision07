@@ -16,8 +16,10 @@ func makeEntity(mesh: MeshResource, mat: RealityKit.Material,
 struct Ring {
   var size: Float = 0.1
   var xOffset: Float = 0
-  var yOffset: Float = 0
+  var yOffset0: Float = 0
+  var ySpeed: Float = 0
 
+  var yOffset: Float = 0
   var time: Float = 0
   var speed: Float = 0
   var brightness: Float = 1
@@ -25,12 +27,12 @@ struct Ring {
 
 class RingComponent: Component {
   let fingerTips: [AnchorEntity]
-  var ringParam: Ring
+  var ring: Ring
   var factor: Float = 0
 
   init(fingerTips: [AnchorEntity], ringParam: Ring) {
     self.fingerTips = fingerTips
-    self.ringParam = ringParam
+    self.ring = ringParam
   }
 }
 
@@ -39,7 +41,10 @@ class RingSystem: System {
 
   required init(scene: RealityKit.Scene) { }
 
+  var time: Float = 0
+
   func update(context: SceneUpdateContext) {
+    time += Float(context.deltaTime)
     var targetFactor: Float = -1
 
     for entity in context.entities(matching: Self.query, updatingSystemWhen: .rendering) {
@@ -63,20 +68,21 @@ class RingSystem: System {
       } else {
         comp.factor += (targetFactor - comp.factor) * 0.006
       }
-      comp.ringParam.time += comp.ringParam.speed * (1 + comp.factor * 5)
-      let brightness = comp.ringParam.brightness * (1 + comp.factor)
+      comp.ring.yOffset = comp.ring.yOffset0 * cos(time * comp.ring.ySpeed)
+      comp.ring.time += comp.ring.speed * (1 + comp.factor * 5)
+      let brightness = comp.ring.brightness * (1 + comp.factor)
       let scale = 1.0 - comp.factor * 0.9
-      let size = comp.ringParam.size * (1.0 - comp.factor * 0.15) + comp.ringParam.xOffset * scale
+      let size = comp.ring.size * (1.0 - comp.factor * 0.15) + comp.ring.xOffset * scale
 
       if var modelComponent = entity.components[ModelComponent.self],
          var mat = modelComponent.materials.first as? ShaderGraphMaterial {
-        try? mat.setParameter(name: "TimeOffset", value: .float(comp.ringParam.time))
+        try? mat.setParameter(name: "TimeOffset", value: .float(comp.ring.time))
         try? mat.setParameter(name: "Brightness", value: .float(brightness))
         try? mat.setParameter(name: "Mode", value: .float(comp.factor))
         modelComponent.materials = [mat]
         entity.components.set(modelComponent)
         entity.transform.scale = [size, 1, size]
-        entity.transform.translation.y = comp.ringParam.yOffset * scale
+        entity.transform.translation.y = comp.ring.yOffset * scale
       }
     }
   }
@@ -122,20 +128,28 @@ struct ImmersiveView: View {
       var rings: [Ring] = []
       for _ in 0..<150 {
         let (x, y) = sampleCircle()
-        rings.append(Ring(size: 0.05,
-                          xOffset: x * 0.013,
-                          yOffset: y * 0.016,
-                          time: Float.random(in: 0...10),
-                          speed: Float.random(in: 0.002...0.004),
-                          brightness: Float.random(in: 0.5...1)))
+        let ring = Ring(size: 0.05,
+                        xOffset: x * 0.01,
+                        yOffset0: y * 0.01,
+                        ySpeed: Float.random(in: 0...1),
+                        time: Float.random(in: 0...10),
+                        speed: Float.random(in: 0.002...0.004),
+                        brightness: Float.random(in: 0.5...1))
+        rings.append(ring)
       }
       rings.sort { $0.xOffset > $1.xOffset }
 
       let group = ModelSortGroup(depthPass: nil)
       for (i, ring) in rings.enumerated() {
+        try? mat
+          .setParameter(
+            name: "HSV1",
+            value: .color(CGColor(red: CGFloat(Float.random(in: 0...1)), green: 0.5, blue: 0.8, alpha: 0))
+          )
         try? mat.setParameter(name: "TimeOffset", value: .float(ring.time))
         try? mat.setParameter(name: "Speed", value: .float(0.01))
         try? mat.setParameter(name: "Brightness", value: .float(ring.brightness))
+        try? mat.setParameter(name: "Mode", value: .float(0))
         let inEntity = await makeEntity(mesh: inMesh, mat: mat, sortGroup: group, sortOrder: Int32(i))
         let outEntity = await makeEntity(mesh: outMesh, mat: mat, sortGroup: group, sortOrder: Int32(rings.count*2 - i))
         inEntity.transform.scale = [ring.size + ring.xOffset, 1, ring.size + ring.xOffset]
